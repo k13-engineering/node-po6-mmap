@@ -1,1 +1,114 @@
 # node-po6-mmap
+
+A Node.js library for memory-mapped file I/O using the `mmap` system call. This package provides a TypeScript-first interface for mapping files into memory with automatic resource management and garbage collection safety.
+
+## Features
+
+- 🗺️ Map files into memory using the `mmap` syscall
+- 🔒 Support for shared and private mappings
+- ⚡ Zero-copy access to file data via Uint8Array
+- 🛡️ Automatic detection of unmapped buffers during garbage collection
+- 📦 TypeScript-first with full type definitions
+- 🔧 Flexible memory protection flags (read, write, execute)
+
+## Installation
+
+```bash
+npm install @k13engineering/po6-mmap
+```
+
+## Usage
+
+```typescript
+import { mmapFd, determinePageSize } from "@k13engineering/po6-mmap";
+import nodeFs from "node:fs";
+
+const fd = nodeFs.openSync("/dev/zero", "r+");
+
+const length = determinePageSize();
+
+const { errno, buffer } = mmapFd({
+  fd,
+  mappingVisibility: "MAP_PRIVATE",
+  memoryProtectionFlags: {
+    PROT_READ: true,
+    PROT_WRITE: false,
+    PROT_EXEC: false,
+  },
+  genericFlags: {},
+  offsetInFd: 0,
+  length,
+});
+
+nodeFs.closeSync(fd);
+
+if (errno !== undefined) {
+  throw Error(`mmapFd failed with errno ${errno}`);
+}
+
+console.log(`mapped buffer of length ${buffer.length} at address 0x${buffer.address.toString(16)}`);
+console.log(`buffer:`, buffer);
+
+buffer.unmap();
+```
+
+## API
+
+### `mmapFd(options)`
+
+Maps a file descriptor into memory.
+
+**Parameters:**
+- `fd` (number): File descriptor to map
+- `mappingVisibility` (`"MAP_SHARED"` | `"MAP_PRIVATE"`): Mapping visibility
+  - `MAP_SHARED`: Changes are shared with other processes
+  - `MAP_PRIVATE`: Changes are private (copy-on-write)
+- `memoryProtectionFlags` (object): Memory protection flags
+  - `PROT_READ` (boolean): Allow read access
+  - `PROT_WRITE` (boolean): Allow write access
+  - `PROT_EXEC` (boolean): Allow execution
+- `genericFlags` (object): Additional flags
+  - `MAP_32BIT` (boolean): Map into 32-bit address space
+  - `MAP_LOCKED` (boolean): Lock pages in memory
+  - `MAP_NORESERVE` (boolean): Don't reserve swap space
+- `offsetInFd` (number): Offset in file (must be page-aligned)
+- `length` (number): Length of mapping in bytes
+
+**Returns:** Object with either:
+- `{ errno: number, buffer: undefined }` on error
+- `{ errno: undefined, buffer: TMemoryMappedBuffer }` on success
+
+**Note:** Not all `mmap` options are currently exposed. Additional flags and options may be added in future versions.
+
+### `TMemoryMappedBuffer`
+
+A `Uint8Array` with additional properties:
+- `address` (bigint): Memory address of the mapping
+- `unmap()` (function): Unmaps the memory region
+
+**Important:** Always call `unmap()` when done to avoid memory leaks. If a buffer is garbage collected without being unmapped, the library will throw an uncaught exception.
+
+### `determinePageSize()`
+
+Returns the system page size (currently hardcoded to 4096).
+
+## Memory Safety
+
+This library includes a finalization registry that detects if a memory-mapped buffer is garbage collected without calling `unmap()`. If this happens, a `MemoryMappedBufferGarbageCollectedWithoutUnmapError` is thrown to prevent silent memory leaks.
+
+Always ensure you call `unmap()` on buffers when you're done with them:
+
+```typescript
+const result = mmapFd({ /* ... */ });
+if (result.errno === undefined) {
+  try {
+    // Use result.buffer
+  } finally {
+    result.buffer.unmap(); // Always unmap in finally block
+  }
+}
+```
+
+## License
+
+See LICENSE file.
