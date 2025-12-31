@@ -168,10 +168,41 @@ const munmap = ({
   };
 };
 
+type TMemoryMappedBufferInfo = {
+  address: bigint;
+  length: number;
+};
+
 type TMemoryMappedBuffer = Uint8Array & {
   address: bigint;
   unmap: () => void;
 };
+
+class MemoryMappedBufferGarbageCollectedWithoutUnmapError extends Error {
+
+  public bufferInfo: TMemoryMappedBufferInfo;
+
+  constructor ({ bufferInfo }: { bufferInfo: TMemoryMappedBufferInfo }) {
+    let message = `memory mapped buffer at`;
+    message += ` address 0x${bufferInfo.length.toString(16)}`;
+    message += ` with length ${bufferInfo.length}`;
+    message += ` was garbage collected without calling unmap().`;
+    message += ` This would causes a memory leak -`;
+    message += ` therefore this raises an uncaught exception.`;
+    message += ` Please make sure to call unmap() on all memory mapped buffers when you are done with them.`;
+
+    super(message);
+
+    this.bufferInfo = bufferInfo;
+    this.name = "MemoryMappedBufferGarbageCollectedWithoutUnmapError";
+  }
+};
+
+const mappedBuffersFinalizationRegistry = new FinalizationRegistry((bufferInfo: TMemoryMappedBufferInfo) => {
+  // This callback is called when a buffer is garbage collected without unmap() being called
+
+  throw new MemoryMappedBufferGarbageCollectedWithoutUnmapError({ bufferInfo });
+});
 
 const memoryMappedBufferFromAddress = ({
   address,
@@ -195,11 +226,22 @@ const memoryMappedBufferFromAddress = ({
     }
 
     mapped = false;
+
+    // Unregister from finalization registry since we properly unmapped
+    mappedBuffersFinalizationRegistry.unregister(buffer);
   };
 
   // monkey-patch the buffer to add address and unmap method
   buffer.address = address;
   buffer.unmap = unmap;
+
+  const bufferInfo: TMemoryMappedBufferInfo = {
+    address,
+    length,
+  };
+
+  // Register the buffer to detect if it's garbage collected without unmap()
+  mappedBuffersFinalizationRegistry.register(buffer, bufferInfo, buffer);
 
   return buffer as TMemoryMappedBuffer;
 };
@@ -284,5 +326,14 @@ const mmapFd = ({
 export {
   mmapFd,
 
-  determinePageSize
+  determinePageSize,
+  MemoryMappedBufferGarbageCollectedWithoutUnmapError
+};
+
+export type {
+  TMemoryMappedBuffer,
+  TMemoryMappingVisibility,
+  TMemoryProtectionFlags,
+  TGenericMmapFlags,
+  TMemoryMappedBufferInfo
 };

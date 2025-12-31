@@ -2,7 +2,14 @@ import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { mmapFd, determinePageSize } from "../lib/index.ts";
+import {
+  mmapFd,
+  determinePageSize,
+  type TMemoryMappedBufferInfo,
+  type TMemoryMappedBuffer,
+  MemoryMappedBufferGarbageCollectedWithoutUnmapError
+} from "../lib/index.ts";
+import { captureUncaughtExceptionsDuring, forceGarbageCollection } from "./util.ts";
 
 describe("node-po6-mmap", () => {
   let tmpDir: string;
@@ -461,6 +468,74 @@ describe("node-po6-mmap", () => {
       assert.ok(result.buffer !== undefined);
 
       result.buffer.unmap();
+    });
+  });
+
+  describe("memory leak detection", () => {
+    it("should throw exception when buffer is garbage collected without unmap", async function () {
+      this.timeout(5000);
+
+      if (global.gc === undefined) {
+        this.skip();
+        return;
+      }
+
+      const mapZero = ({ length }: { length: number }) => {
+
+        const fd = fs.openSync("/dev/zero", "r+");
+
+        const { errno, buffer } = mmapFd({
+          fd,
+          mappingVisibility: "MAP_PRIVATE",
+          memoryProtectionFlags: {
+            PROT_READ: true,
+            PROT_WRITE: true,
+            PROT_EXEC: false,
+          },
+          genericFlags: {},
+          offsetInFd: 0,
+          length,
+        });
+
+        if (errno !== undefined) {
+          throw Error(`mmapFd failed with errno ${errno}`);
+        }
+
+        return buffer;
+      };
+
+      const length = determinePageSize() * 2;
+
+      let buffer: TMemoryMappedBuffer | undefined = mapZero({ length });
+
+      const bufferInfo: TMemoryMappedBufferInfo = {
+        address: buffer.address,
+        length: buffer.length,
+      };
+
+      const capturedUncaughtExceptions = await captureUncaughtExceptionsDuring(async ({ uncaughtExceptions }) => {
+        // remove reference to buffer to allow garbage collection
+        buffer = undefined;
+
+        const startedAt = performance.now();
+
+        while (performance.now() - startedAt < 3000) {
+          forceGarbageCollection();
+          await new Promise((resolve) => setTimeout(resolve, 20));
+
+          const exceptions = uncaughtExceptions();
+          if (exceptions.length > 0) {
+            return;
+          }
+        }
+      });
+
+      assert.strictEqual(capturedUncaughtExceptions.length, 1, `Expected 1 uncaught exception but got ${capturedUncaughtExceptions.length}`);
+
+      const ex = capturedUncaughtExceptions[0];
+      assert.ok(ex instanceof MemoryMappedBufferGarbageCollectedWithoutUnmapError);
+      assert.strictEqual(ex.bufferInfo.address, bufferInfo.address);
+      assert.strictEqual(ex.bufferInfo.length, bufferInfo.length);
     });
   });
 });
