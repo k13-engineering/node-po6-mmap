@@ -1,5 +1,5 @@
 {
-  "name": "po6-mmap",
+  "name": "@k13engineering/po6-mmap",
   "type": "module",
   "description": "Map memory to buffers via mmap",
   "files": [
