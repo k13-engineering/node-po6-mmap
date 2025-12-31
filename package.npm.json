@@ -2,6 +2,9 @@
   "name": "@k13engineering/po6-mmap",
   "type": "module",
   "description": "Map memory to buffers via mmap",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],
