@@ -18,6 +18,8 @@ const { errno, buffer } = mmapFd({
   length,
 });
 
+nodeFs.closeSync(fd);
+
 if (errno !== undefined) {
   throw Error(`mmapFd failed with errno ${errno}`);
 }
