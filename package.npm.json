@@ -1,0 +1,20 @@
+{
+  "name": "po6-mmap",
+  "type": "module",
+  "description": "Map memory to buffers via mmap",
+  "files": [
+    "dist"
+  ],
+  "main": "dist/lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/k13-engineering/node-po6-mmap.git"
+  },
+  "keywords": [],
+  "author": "Simon Kadisch",
+  "license": "LGPL 2.1",
+  "bugs": {
+    "url": "https://github.com/k13-engineering/node-po6-mmap/issues"
+  },
+  "homepage": "https://github.com/k13-engineering/node-po6-mmap#readme"
+}
