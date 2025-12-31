@@ -166,6 +166,36 @@ describe("node-po6-mmap", () => {
 
       result.buffer.unmap();
     });
+
+    it("should contain the well-known file contents in the mapped buffer", () => {
+      const result = mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: false,
+        },
+        genericFlags: {},
+        offsetInFd: 0,
+        length: testFileSize,
+      });
+
+      assert.strictEqual(result.errno, undefined);
+      assert.ok(result.buffer !== undefined);
+      assert.strictEqual(result.buffer.length, testFileSize);
+
+      // Verify every byte matches the well-known pattern (i % 256)
+      for (let i = 0; i < testFileSize; i += 1) {
+        assert.strictEqual(
+          result.buffer[i],
+          i % 256,
+          `Byte at offset ${i} should be ${i % 256} but got ${result.buffer[i]}`
+        );
+      }
+
+      result.buffer.unmap();
+    });
   });
 
   describe("mmapFd - exception scenarios (not errno)", () => {
