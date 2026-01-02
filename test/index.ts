@@ -9,7 +9,8 @@ import {
   type TMemoryMappedBuffer,
   MemoryMappedBufferGarbageCollectedWithoutUnmapError
 } from "../lib/index.ts";
-import { captureUncaughtExceptionsDuring, forceGarbageCollection } from "./util.ts";
+import { captureUncaughtExceptionsDuring, forceGarbageCollection, mapZero } from "./util.ts";
+import { formatPointer } from "../lib/snippets/format-pointer.ts";
 
 describe("node-po6-mmap", () => {
   let tmpDir: string;
@@ -480,30 +481,6 @@ describe("node-po6-mmap", () => {
         return;
       }
 
-      const mapZero = ({ length }: { length: number }) => {
-
-        const fd = fs.openSync("/dev/zero", "r+");
-
-        const { errno, buffer } = mmapFd({
-          fd,
-          mappingVisibility: "MAP_PRIVATE",
-          memoryProtectionFlags: {
-            PROT_READ: true,
-            PROT_WRITE: true,
-            PROT_EXEC: false,
-          },
-          genericFlags: {},
-          offsetInFd: 0,
-          length,
-        });
-
-        if (errno !== undefined) {
-          throw Error(`mmapFd failed with errno ${errno}`);
-        }
-
-        return buffer;
-      };
-
       const length = determinePageSize() * 2;
 
       let buffer: TMemoryMappedBuffer | undefined = mapZero({ length });
@@ -536,6 +513,9 @@ describe("node-po6-mmap", () => {
       assert.ok(ex instanceof MemoryMappedBufferGarbageCollectedWithoutUnmapError);
       assert.strictEqual(ex.bufferInfo.address, bufferInfo.address);
       assert.strictEqual(ex.bufferInfo.length, bufferInfo.length);
+
+      assert.ok(ex.message.includes(formatPointer({ pointerAddress: bufferInfo.address })));
+      assert.ok(ex.message.includes(`length ${bufferInfo.length}`));
     });
   });
 });

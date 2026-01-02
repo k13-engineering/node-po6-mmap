@@ -1,3 +1,6 @@
+import { mmapFd } from "../lib/index.ts";
+import nodeFs from "node:fs";
+
 const captureUncaughtExceptionsDuring = async (fn: (args: { uncaughtExceptions: () => Error[] }) => Promise<void>): Promise<Error[]> => {
 
   let uncaughtExceptions: Error[] = [];
@@ -40,7 +43,32 @@ const forceGarbageCollection = () => {
   gc();
 };
 
+const mapZero = ({ length }: { length: number }) => {
+
+  const fd = nodeFs.openSync("/dev/zero", "r+");
+
+  const { errno, buffer } = mmapFd({
+    fd,
+    mappingVisibility: "MAP_PRIVATE",
+    memoryProtectionFlags: {
+      PROT_READ: true,
+      PROT_WRITE: true,
+      PROT_EXEC: false,
+    },
+    genericFlags: {},
+    offsetInFd: 0,
+    length,
+  });
+
+  if (errno !== undefined) {
+    throw Error(`mmapFd failed with errno ${errno}`);
+  }
+
+  return buffer;
+};
+
 export {
   captureUncaughtExceptionsDuring,
-  forceGarbageCollection
+  forceGarbageCollection,
+  mapZero,
 };
