@@ -11,6 +11,8 @@ import {
 } from "../lib/index.ts";
 import { captureUncaughtExceptionsDuring, forceGarbageCollection, mapZero } from "./util.ts";
 import { formatPointer } from "../lib/snippets/format-pointer.ts";
+import { createConvenienceApi, type TMmapFdResult } from "../lib/convenience-api.ts";
+import { createLinuxLowLevelInterface } from "../lib/low-level-impl-linux.ts";
 
 describe("node-po6-mmap", () => {
   let tmpDir: string;
@@ -595,6 +597,73 @@ describe("node-po6-mmap", () => {
       assert.ok(result.errno !== undefined, "errno should be set");
       assert.ok(result.errno > 0, "errno should be a positive number");
       assert.strictEqual(result.buffer, undefined);
+    });
+
+    it("should throw exception when munmap fails", async () => {
+
+      const EINVAL = 22;
+
+      const linuxLowLevelInterface = createLinuxLowLevelInterface();
+
+      const convenienceApi = createConvenienceApi({
+        lowLevelInterface: {
+          mmap: linuxLowLevelInterface.mmap,
+          munmap: ({ address, length }) => {
+            const { errno } = linuxLowLevelInterface.munmap({
+              address,
+              length
+            });
+
+            assert.ok(errno === undefined);
+
+            return {
+              errno: EINVAL
+            };
+          },
+          determinePageSize: linuxLowLevelInterface.determinePageSize,
+        }
+      });
+
+      let mapResult: TMmapFdResult | undefined = convenienceApi.mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: false,
+        },
+        genericFlags: {},
+        offsetInFd: 0,
+        length: 4096,
+      });
+
+      assert.strictEqual(mapResult!.errno, undefined);
+      assert.ok(mapResult!.buffer !== undefined);
+
+      assert.throws(() => {
+        mapResult!.buffer!.unmap();
+      }, {
+        message: `munmap failed with errno ${EINVAL}`
+      });
+
+      const capturedUncaughtExceptions = await captureUncaughtExceptionsDuring(async ({ uncaughtExceptions }) => {
+        // remove reference to buffer to allow garbage collection
+        mapResult = undefined;
+
+        const startedAt = performance.now();
+
+        while (performance.now() - startedAt < 3000) {
+          forceGarbageCollection();
+          await new Promise((resolve) => setTimeout(resolve, 20));
+
+          const exceptions = uncaughtExceptions();
+          if (exceptions.length > 0) {
+            return;
+          }
+        }
+      });
+
+      assert.strictEqual(capturedUncaughtExceptions.length, 1);
     });
   });
 

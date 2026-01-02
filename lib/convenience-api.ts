@@ -278,5 +278,6 @@ export type {
   TMemoryMappingVisibility,
   TMemoryProtectionFlags,
   TGenericMmapFlags,
-  TMemoryMappedBufferInfo
+  TMemoryMappedBufferInfo,
+  TMmapFdResult,
 };
