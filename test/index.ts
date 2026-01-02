@@ -470,6 +470,132 @@ describe("node-po6-mmap", () => {
 
       result.buffer.unmap();
     });
+
+    it("should map with MAP_32BIT flag", () => {
+      const result = mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: false,
+        },
+        genericFlags: {
+          MAP_32BIT: true,
+        },
+        offsetInFd: 0,
+        length: 4096,
+      });
+
+      assert.ok(result.buffer !== undefined);
+      // When MAP_32BIT succeeds, the address should be in the 32-bit range
+      assert.ok(result.buffer.address < BigInt(0x100000000), "Address should be in 32-bit range");
+
+      result.buffer.unmap();
+    });
+
+    it("should map with MAP_LOCKED flag", () => {
+      const result = mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: false,
+        },
+        genericFlags: {
+          MAP_LOCKED: true,
+        },
+        offsetInFd: 0,
+        length: 4096,
+      });
+
+      assert.ok(result.buffer !== undefined);
+      assert.strictEqual(result.buffer.length, 4096);
+
+      result.buffer.unmap();
+    });
+  });
+
+  describe("PROT_EXEC flag", () => {
+    it("should map with PROT_EXEC flag", () => {
+      const result = mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: true,
+        },
+        genericFlags: {},
+        offsetInFd: 0,
+        length: 4096,
+      });
+
+      assert.strictEqual(result.errno, undefined);
+      assert.ok(result.buffer !== undefined);
+      assert.strictEqual(result.buffer.length, 4096);
+
+      // Should be able to read the data
+      assert.strictEqual(result.buffer[0], 0);
+      assert.strictEqual(result.buffer[1], 1);
+
+      result.buffer.unmap();
+    });
+
+    it("should map with PROT_READ, PROT_WRITE, and PROT_EXEC all enabled", () => {
+      const result = mmapFd({
+        fd: testFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: true,
+          PROT_EXEC: true,
+        },
+        genericFlags: {},
+        offsetInFd: 0,
+        length: 4096,
+      });
+
+      assert.strictEqual(result.errno, undefined);
+      assert.ok(result.buffer !== undefined);
+
+      // Should be able to read and write
+      const originalValue = result.buffer[0];
+      result.buffer[0] = 123;
+      assert.strictEqual(result.buffer[0], 123);
+      result.buffer[0] = originalValue;
+
+      result.buffer.unmap();
+    });
+  });
+
+  describe("errno scenarios", () => {
+    it("should return errno when trying to map non-mappable fd", () => {
+      // stdin is typically not mappable
+      const stdinFd = 0;
+
+      const result = mmapFd({
+        fd: stdinFd,
+        mappingVisibility: "MAP_PRIVATE",
+        memoryProtectionFlags: {
+          PROT_READ: true,
+          PROT_WRITE: false,
+          PROT_EXEC: false,
+        },
+        genericFlags: {},
+        offsetInFd: 0,
+        length: determinePageSize(),
+      });
+
+      if (result.errno === undefined) {
+        result.buffer.unmap();
+      }
+
+      assert.ok(result.errno !== undefined, "errno should be set");
+      assert.ok(result.errno > 0, "errno should be a positive number");
+      assert.strictEqual(result.buffer, undefined);
+    });
   });
 
   describe("memory leak detection", () => {
