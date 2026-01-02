@@ -507,7 +507,7 @@ describe("node-po6-mmap", () => {
         }
       });
 
-      assert.strictEqual(capturedUncaughtExceptions.length, 1, `Expected 1 uncaught exception but got ${capturedUncaughtExceptions.length}`);
+      assert.strictEqual(capturedUncaughtExceptions.length, 1);
 
       const ex = capturedUncaughtExceptions[0];
       assert.ok(ex instanceof MemoryMappedBufferGarbageCollectedWithoutUnmapError);
