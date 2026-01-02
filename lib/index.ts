@@ -184,7 +184,7 @@ class MemoryMappedBufferGarbageCollectedWithoutUnmapError extends Error {
 
   constructor ({ bufferInfo }: { bufferInfo: TMemoryMappedBufferInfo }) {
     let message = `memory mapped buffer at`;
-    message += ` address 0x${bufferInfo.length.toString(16)}`;
+    message += ` address 0x${bufferInfo.address.toString(16)}`;
     message += ` with length ${bufferInfo.length}`;
     message += ` was garbage collected without calling unmap().`;
     message += ` This would causes a memory leak -`;
