@@ -7,6 +7,9 @@ import type {
   TMemoryMappedBuffer,
   TMemoryMappedBufferInfo,
   TMmapFdFunc,
+  TGenericMmapFlags,
+  TMemoryMappingVisibility,
+  TMemoryProtectionFlags,
 } from "./convenience-api.ts";
 import { createLinuxLowLevelInterface } from "./low-level-impl-linux.ts";
 
@@ -22,10 +25,14 @@ const determinePageSize = convenienceApi.determinePageSize as TDeterminePageSize
 export {
   mmapFd,
   determinePageSize,
+  createConvenienceApi,
   MemoryMappedBufferGarbageCollectedWithoutUnmapError
 };
 
 export type {
   TMemoryMappedBuffer,
   TMemoryMappedBufferInfo,
+  TMemoryMappingVisibility,
+  TMemoryProtectionFlags,
+  TGenericMmapFlags,
 };
