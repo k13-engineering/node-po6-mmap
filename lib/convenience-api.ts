@@ -266,6 +266,8 @@ const createConvenienceApi = ({
 };
 
 type TMmapConvenienceApi = ReturnType<typeof createConvenienceApi>;
+type TMmapFdFunc = TMmapConvenienceApi["mmapFd"];
+type TDeterminePageSizeFunc = TMmapConvenienceApi["determinePageSize"];
 
 export {
   createConvenienceApi,
@@ -280,4 +282,6 @@ export type {
   TGenericMmapFlags,
   TMemoryMappedBufferInfo,
   TMmapFdResult,
+  TMmapFdFunc,
+  TDeterminePageSizeFunc,
 };
