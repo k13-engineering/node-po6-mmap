@@ -139,7 +139,10 @@ const createConvenienceApi = ({
   lowLevelInterface: TMmapLowLevelInterface;
 }) => {
 
-  const { mmap, munmap, determinePageSize } = lowLevelInterface;
+  const { mmap, munmap } = lowLevelInterface;
+
+  // help type inference
+  const determinePageSize = lowLevelInterface.determinePageSize as () => number;
 
   const assertMmapParameters = ({
     offsetInFd,
