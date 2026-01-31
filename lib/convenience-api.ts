@@ -171,6 +171,7 @@ const createConvenienceApi = ({
     length: number;
   }): TMemoryMappedBuffer => {
     const buffer = address2buffer({ address, size: length });
+    const backingArrayBuffer = buffer.buffer;
 
     let mapped = true;
 
@@ -187,7 +188,7 @@ const createConvenienceApi = ({
       mapped = false;
 
       // Unregister from finalization registry since we properly unmapped
-      mappedBuffersFinalizationRegistry.unregister(buffer);
+      mappedBuffersFinalizationRegistry.unregister(backingArrayBuffer);
     };
 
     // monkey-patch the buffer to add address and unmap method
@@ -201,7 +202,7 @@ const createConvenienceApi = ({
     };
 
     // Register the buffer to detect if it's garbage collected without unmap()
-    mappedBuffersFinalizationRegistry.register(buffer, bufferInfo, buffer);
+    mappedBuffersFinalizationRegistry.register(backingArrayBuffer, bufferInfo, backingArrayBuffer);
 
     return monkeyPatchedBuffer;
   };
