@@ -191,8 +191,9 @@ const createConvenienceApi = ({
     };
 
     // monkey-patch the buffer to add address and unmap method
-    buffer.address = address;
-    buffer.unmap = unmap;
+    const monkeyPatchedBuffer = buffer as TMemoryMappedBuffer;
+    monkeyPatchedBuffer.address = address;
+    monkeyPatchedBuffer.unmap = unmap;
 
     const bufferInfo: TMemoryMappedBufferInfo = {
       address,
@@ -202,7 +203,7 @@ const createConvenienceApi = ({
     // Register the buffer to detect if it's garbage collected without unmap()
     mappedBuffersFinalizationRegistry.register(buffer, bufferInfo, buffer);
 
-    return buffer as TMemoryMappedBuffer;
+    return monkeyPatchedBuffer;
   };
 
   const mmapFd = ({
