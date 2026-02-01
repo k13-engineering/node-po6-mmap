@@ -4,7 +4,7 @@ import {
 } from "./convenience-api.ts";
 import type {
   TDeterminePageSizeFunc,
-  TMemoryMappedArrayBuffer,
+  TMemoryMapping,
   TMemoryMappedBufferInfo,
   TMmapFdFunc,
   TGenericMmapFlags,
@@ -30,7 +30,7 @@ export {
 };
 
 export type {
-  TMemoryMappedArrayBuffer,
+  TMemoryMapping,
   TMemoryMappedBufferInfo,
   TMemoryMappingVisibility,
   TMemoryProtectionFlags,

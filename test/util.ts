@@ -47,7 +47,7 @@ const mapZero = ({ length }: { length: number }) => {
 
   const fd = nodeFs.openSync("/dev/zero", "r+");
 
-  const { errno, buffer } = mmapFd({
+  const { errno, mapping } = mmapFd({
     fd,
     mappingVisibility: "MAP_PRIVATE",
     memoryProtectionFlags: {
@@ -64,7 +64,7 @@ const mapZero = ({ length }: { length: number }) => {
     throw Error(`mmapFd failed with errno ${errno}`);
   }
 
-  return buffer;
+  return mapping;
 };
 
 export {

@@ -81,8 +81,12 @@ type TMemoryMappedBufferInfo = {
   length: number;
 };
 
-type TMemoryMappedArrayBuffer = ArrayBuffer & {
+type TMemoryMapping = {
   address: bigint;
+  length: number;
+
+  createArrayBuffer: () => ArrayBuffer;
+
   unmap: () => void;
 };
 
@@ -115,10 +119,10 @@ const mappedBuffersFinalizationRegistry = new FinalizationRegistry((bufferInfo: 
 
 type TMmapFdResult = {
   errno: number;
-  buffer: undefined;
+  mapping: undefined;
 } | {
   errno: undefined;
-  buffer: TMemoryMappedArrayBuffer;
+  mapping: TMemoryMapping;
 };
 
 const assertFdIsValid = ({ fd }: { fd: number }) => {
@@ -163,21 +167,19 @@ const createConvenienceApi = ({
     }
   };
 
-  const memoryMappedBufferFromAddress = ({
+  const memoryMappingFromAddress = ({
     address,
     length,
   }: {
     address: bigint;
     length: number;
-  }): TMemoryMappedArrayBuffer => {
-    const buffer = address2buffer({ address, size: length });
-    const backingArrayBuffer = buffer.buffer;
-
+  }): TMemoryMapping => {
     let mapped = true;
+    const token = {};
 
     const unmap = () => {
       if (!mapped) {
-        throw Error(`memory already unmapped`);
+        throw Error(`memory mapping already unmapped`);
       }
 
       const { errno } = munmap({ address, length });
@@ -188,13 +190,8 @@ const createConvenienceApi = ({
       mapped = false;
 
       // Unregister from finalization registry since we properly unmapped
-      mappedBuffersFinalizationRegistry.unregister(backingArrayBuffer);
+      mappedBuffersFinalizationRegistry.unregister(token);
     };
-
-    // monkey-patch the buffer to add address and unmap method
-    const monkeyPatchedArrayBuffer = backingArrayBuffer as TMemoryMappedArrayBuffer;
-    monkeyPatchedArrayBuffer.address = address;
-    monkeyPatchedArrayBuffer.unmap = unmap;
 
     const bufferInfo: TMemoryMappedBufferInfo = {
       address,
@@ -202,9 +199,29 @@ const createConvenienceApi = ({
     };
 
     // Register the buffer to detect if it's garbage collected without unmap()
-    mappedBuffersFinalizationRegistry.register(unmap, bufferInfo, backingArrayBuffer);
+    mappedBuffersFinalizationRegistry.register(unmap, bufferInfo, token);
 
-    return monkeyPatchedArrayBuffer;
+    const createArrayBuffer = (): ArrayBuffer => {
+      if (!mapped) {
+        throw Error(`memory mapping already unmapped`);
+      }
+
+      const buffer = address2buffer({ address, size: length });
+      const backingArrayBuffer = buffer.buffer;
+
+      if (!(backingArrayBuffer instanceof ArrayBuffer)) {
+        throw Error(`internal error: expected ArrayBuffer as backing buffer`);
+      }
+
+      return backingArrayBuffer;
+    };
+
+    return {
+      address,
+      length,
+      createArrayBuffer,
+      unmap
+    };
   };
 
   const mmapFd = ({
@@ -249,18 +266,18 @@ const createConvenienceApi = ({
     if (errno !== undefined) {
       return {
         errno,
-        buffer: undefined,
+        mapping: undefined,
       };
     }
 
-    const buffer = memoryMappedBufferFromAddress({
+    const mapping = memoryMappingFromAddress({
       address: mappedAddress,
       length,
     });
 
     return {
       errno: undefined,
-      buffer,
+      mapping,
     };
   };
 
@@ -281,7 +298,7 @@ export {
 
 export type {
   TMmapConvenienceApi,
-  TMemoryMappedArrayBuffer,
+  TMemoryMapping,
   TMemoryMappingVisibility,
   TMemoryProtectionFlags,
   TGenericMmapFlags,

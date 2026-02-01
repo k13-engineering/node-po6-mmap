@@ -6,7 +6,6 @@ import {
   mmapFd,
   determinePageSize,
   type TMemoryMappedBufferInfo,
-  type TMemoryMappedArrayBuffer,
   MemoryMappedBufferGarbageCollectedWithoutUnmapError
 } from "../lib/index.ts";
 import { captureUncaughtExceptionsDuring, forceGarbageCollection, mapZero } from "./util.ts";
@@ -71,17 +70,18 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, 4096);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, 4096);
 
       // Verify we can read the data
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       assert.strictEqual(view[0], 0);
       assert.strictEqual(view[1], 1);
       assert.strictEqual(view[255], 255);
 
       // Clean up
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should return correct length of buffer", () => {
@@ -102,10 +102,10 @@ describe("node-po6-mmap", () => {
         });
 
         assert.strictEqual(result.errno, undefined);
-        assert.ok(result.buffer !== undefined);
-        assert.strictEqual(result.buffer.byteLength, length, `Buffer length should be ${length}`);
+        assert.ok(result.mapping !== undefined);
+        assert.strictEqual(result.mapping.length, length, `Buffer length should be ${length}`);
 
-        result.buffer.unmap();
+        result.mapping.unmap();
       }
     });
 
@@ -124,14 +124,15 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
       // Should be able to write
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       view[0] = 42;
       assert.strictEqual(view[0], 42);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should map with MAP_SHARED visibility", () => {
@@ -149,9 +150,9 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should map with different offsets", () => {
@@ -170,14 +171,15 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
       // Verify we're reading from the correct offset
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       assert.strictEqual(view[0], pageSize % 256);
       assert.strictEqual(view[1], (pageSize + 1) % 256);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should contain the well-known file contents in the mapped buffer", () => {
@@ -195,11 +197,12 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, testFileSize);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, testFileSize);
 
       // Verify every byte matches the well-known pattern (i % 256)
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       for (let i = 0; i < testFileSize; i += 1) {
         assert.strictEqual(
           view[i],
@@ -208,7 +211,7 @@ describe("node-po6-mmap", () => {
         );
       }
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
   });
 
@@ -228,16 +231,16 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
       // First unmap should succeed
-      result.buffer.unmap();
+      result.mapping.unmap();
 
       // Second unmap should throw an exception
       assert.throws(() => {
-        result.buffer.unmap();
+        result.mapping.unmap();
       }, {
-        message: "memory already unmapped"
+        message: "memory mapping already unmapped"
       });
     });
 
@@ -379,11 +382,11 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(typeof result.buffer.address, "bigint");
-      assert.ok(result.buffer.address > BigInt(0));
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(typeof result.mapping.address, "bigint");
+      assert.ok(result.mapping.address > BigInt(0));
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should have unmap method on mapped buffer", () => {
@@ -401,10 +404,10 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(typeof result.buffer.unmap, "function");
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(typeof result.mapping.unmap, "function");
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
   });
 
@@ -425,10 +428,10 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, testFileSize - pageSize);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, testFileSize - pageSize);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should handle single page mapping", () => {
@@ -447,10 +450,10 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, pageSize);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, pageSize);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
   });
 
@@ -472,9 +475,9 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should map with MAP_32BIT flag", () => {
@@ -493,11 +496,11 @@ describe("node-po6-mmap", () => {
         length: 4096,
       });
 
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
       // When MAP_32BIT succeeds, the address should be in the 32-bit range
-      assert.ok(result.buffer.address < BigInt(0x100000000), "Address should be in 32-bit range");
+      assert.ok(result.mapping.address < BigInt(0x100000000), "Address should be in 32-bit range");
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should map with MAP_LOCKED flag", () => {
@@ -516,10 +519,10 @@ describe("node-po6-mmap", () => {
         length: 4096,
       });
 
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, 4096);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, 4096);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
   });
 
@@ -539,15 +542,16 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-      assert.strictEqual(result.buffer.byteLength, 4096);
+      assert.ok(result.mapping !== undefined);
+      assert.strictEqual(result.mapping.length, 4096);
 
       // Should be able to read the data
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       assert.strictEqual(view[0], 0);
       assert.strictEqual(view[1], 1);
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
 
     it("should map with PROT_READ, PROT_WRITE, and PROT_EXEC all enabled", () => {
@@ -565,16 +569,17 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
+      assert.ok(result.mapping !== undefined);
 
       // Should be able to read and write
-      const view = new Uint8Array(result.buffer);
+      const buffer = result.mapping.createArrayBuffer();
+      const view = new Uint8Array(buffer);
       const originalValue = view[0];
       view[0] = 123;
       assert.strictEqual(view[0], 123);
       view[0] = originalValue;
 
-      result.buffer.unmap();
+      result.mapping.unmap();
     });
   });
 
@@ -597,12 +602,12 @@ describe("node-po6-mmap", () => {
       });
 
       if (result.errno === undefined) {
-        result.buffer.unmap();
+        result.mapping.unmap();
       }
 
       assert.ok(result.errno !== undefined, "errno should be set");
       assert.ok(result.errno > 0, "errno should be a positive number");
-      assert.strictEqual(result.buffer, undefined);
+      assert.strictEqual(result.mapping, undefined);
     });
 
     it("should throw exception when munmap fails", async () => {
@@ -644,10 +649,10 @@ describe("node-po6-mmap", () => {
       });
 
       assert.strictEqual(mapResult!.errno, undefined);
-      assert.ok(mapResult!.buffer !== undefined);
+      assert.ok(mapResult!.mapping !== undefined);
 
       assert.throws(() => {
-        mapResult!.buffer!.unmap();
+        mapResult!.mapping!.unmap();
       }, {
         message: `munmap failed with errno ${EINVAL}`
       });
@@ -684,16 +689,16 @@ describe("node-po6-mmap", () => {
 
       const length = determinePageSize() * 2;
 
-      let buffer: TMemoryMappedArrayBuffer | undefined = mapZero({ length });
+      let mapping: ReturnType<typeof mapZero> | undefined = mapZero({ length });
 
       const bufferInfo: TMemoryMappedBufferInfo = {
-        address: buffer.address,
-        length: buffer.byteLength,
+        address: mapping.address,
+        length: mapping.length,
       };
 
       const capturedUncaughtExceptions = await captureUncaughtExceptionsDuring(async ({ uncaughtExceptions }) => {
-        // remove reference to buffer to allow garbage collection
-        buffer = undefined;
+        // remove reference to mapping to allow garbage collection
+        mapping = undefined;
 
         const startedAt = performance.now();
 

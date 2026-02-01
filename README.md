@@ -27,7 +27,7 @@ const fd = nodeFs.openSync("/dev/zero", "r+");
 
 const length = determinePageSize();
 
-const { errno, buffer } = mmapFd({
+const { errno, mapping } = mmapFd({
   fd,
   mappingVisibility: "MAP_PRIVATE",
   memoryProtectionFlags: {
@@ -46,10 +46,10 @@ if (errno !== undefined) {
   throw Error(`mmapFd failed with errno ${errno}`);
 }
 
-console.log(`mapped buffer of length ${buffer.length} at address 0x${buffer.address.toString(16)}`);
-console.log(`buffer:`, buffer);
+console.log(`mapped buffer of length ${mapping.length} at address 0x${mapping.address.toString(16)}`);
+console.log(`buffer:`, mapping.createArrayBuffer());
 
-buffer.unmap();
+mapping.unmap();
 ```
 
 ## API
