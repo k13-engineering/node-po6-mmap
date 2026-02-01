@@ -406,44 +406,6 @@ describe("node-po6-mmap", () => {
 
       result.buffer.unmap();
     });
-
-    it("should be frozen and prevent removal of unmap method", () => {
-      const result = mmapFd({
-        fd: testFd,
-        mappingVisibility: "MAP_PRIVATE",
-        memoryProtectionFlags: {
-          PROT_READ: true,
-          PROT_WRITE: false,
-          PROT_EXEC: false,
-        },
-        genericFlags: {},
-        offsetInFd: 0,
-        length: 4096,
-      });
-
-      assert.strictEqual(result.errno, undefined);
-      assert.ok(result.buffer !== undefined);
-
-      try {
-        // Verify the buffer is frozen
-        assert.strictEqual(Object.isFrozen(result.buffer), true, "Buffer should be frozen");
-
-        // Store the original unmap method
-        const originalUnmap = result.buffer.unmap;
-        assert.strictEqual(typeof originalUnmap, "function");
-
-        // Attempt to delete the unmap method (should fail silently in non-strict mode)
-
-        assert.throws(() => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          delete (result.buffer as any).unmap;
-        }, (err: Error) => {
-          return err.message.includes("Cannot delete property");
-        });
-      } finally {
-        result.buffer.unmap();
-      }
-    });
   });
 
   describe("edge cases", () => {

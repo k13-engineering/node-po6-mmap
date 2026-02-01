@@ -204,7 +204,7 @@ const createConvenienceApi = ({
     // Register the buffer to detect if it's garbage collected without unmap()
     mappedBuffersFinalizationRegistry.register(backingArrayBuffer, bufferInfo, backingArrayBuffer);
 
-    return Object.freeze(monkeyPatchedArrayBuffer);
+    return monkeyPatchedArrayBuffer;
   };
 
   const mmapFd = ({
