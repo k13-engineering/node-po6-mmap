@@ -75,15 +75,17 @@ Maps a file descriptor into memory.
 - `length` (number): Length of mapping in bytes
 
 **Returns:** Object with either:
-- `{ errno: number, buffer: undefined }` on error
-- `{ errno: undefined, buffer: TMemoryMappedBuffer }` on success
+- `{ errno: number, mapping: undefined }` on error
+- `{ errno: undefined, mapping: TMemoryMapping }` on success
 
 **Note:** Not all `mmap` options are currently exposed. Additional flags and options may be added in future versions.
 
-### `TMemoryMappedBuffer`
+### `TMemoryMapping`
 
-A `Uint8Array` with additional properties:
+An object representing a memory mapping with the following properties:
 - `address` (bigint): Memory address of the mapping
+- `length` (number): Length of the mapping in bytes
+- `createArrayBuffer()` (function): Returns an ArrayBuffer for the mapped memory region
 - `unmap()` (function): Unmaps the memory region
 
 **Important:** Always call `unmap()` when done to avoid memory leaks. If a buffer is garbage collected without being unmapped, the library will throw an uncaught exception.
@@ -102,9 +104,10 @@ Always ensure you call `unmap()` on buffers when you're done with them:
 const result = mmapFd({ /* ... */ });
 if (result.errno === undefined) {
   try {
-    // Use result.buffer
+    // Use result.mapping
+    const buffer = result.mapping.createArrayBuffer();
   } finally {
-    result.buffer.unmap(); // Always unmap in finally block
+    result.mapping.unmap(); // Always unmap in finally block
   }
 }
 ```
