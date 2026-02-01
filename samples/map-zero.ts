@@ -24,7 +24,7 @@ if (errno !== undefined) {
   throw Error(`mmapFd failed with errno ${errno}`);
 }
 
-console.log(`mapped buffer of length ${buffer.length} at address 0x${buffer.address.toString(16)}`);
+console.log(`mapped buffer of length ${buffer.byteLength} at address 0x${buffer.address.toString(16)}`);
 console.log(`buffer:`, buffer);
 
 buffer.unmap();
