@@ -10,6 +10,12 @@ const createLinuxLowLevelInterface = (): TMmapLowLevelInterface => {
     fd,
     offset,
   }) => {
+
+    if (syscallNumbers.mmap === undefined) {
+      // TODO: also support mmap2 if mmap is not available
+      throw new Error(`mmap syscall is not defined on this platform`);
+    }
+
     const { errno, ret } = syscall({
       syscallNumber: syscallNumbers.mmap,
       args: [
